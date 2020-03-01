@@ -1,14 +1,15 @@
 package com.goticks
 
 import scala.concurrent.Future
+
 import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
-import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import com.typesafe.config.{Config, ConfigFactory}
+
+import com.typesafe.config.{ Config, ConfigFactory }
 
 object Main extends App
     with RequestTimeout {
@@ -20,7 +21,7 @@ object Main extends App
   implicit val system = ActorSystem()  // ActorMaterializer requires an implicit ActorSystem
   implicit val ec = system.dispatcher  // bindingFuture.map requires an implicit ExecutionContext
 
-  val api: Route = new RestApi(system, requestTimeout(config)).routes // the RestApi provides a Route
+  val api = new RestApi(system, requestTimeout(config)).routes // the RestApi provides a Route
  
   implicit val materializer = ActorMaterializer()  // bindAndHandle requires an implicit materializer
   val bindingFuture: Future[ServerBinding] =

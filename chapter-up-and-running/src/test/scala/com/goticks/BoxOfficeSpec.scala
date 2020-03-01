@@ -52,19 +52,19 @@ class BoxOfficeSpec extends TestKit(ActorSystem("testBoxOffice"))
 
     "Get and cancel an event that is not created yet" in {
       val boxOffice = system.actorOf(BoxOffice.props)
-      val noneExitEventName = EventName("noExitEvent")
-      boxOffice ! BoxOffice.GetEvent(noneExitEventName)
+      val notCreatedEvent = EventName("noExitEvent")
+      boxOffice ! BoxOffice.GetEvent(notCreatedEvent)
       expectMsg(None)
 
-      boxOffice ! CancelEvent(noneExitEventName)
+      boxOffice ! CancelEvent(notCreatedEvent)
       expectMsg(None)
     }
 
     "Cancel a ticket which event is not created " in {
       val boxOffice = system.actorOf(BoxOffice.props)
-      val noneExitEventName = EventName("noExitEvent")
+      val notCreatedEvent = EventName("noExitEvent")
 
-      boxOffice ! CancelEvent(noneExitEventName)
+      boxOffice ! CancelEvent(notCreatedEvent)
       expectMsg(None)
     }
 

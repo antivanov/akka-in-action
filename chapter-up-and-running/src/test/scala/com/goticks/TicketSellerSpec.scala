@@ -37,8 +37,9 @@ class TickerSellerSpec extends TestKit(ActorSystem("testTickets"))
       import TicketSeller._
 
       val firstBatchSize = 10
+      val numberOfBatchesFirstBatchSize = 10
 
-      def mkTickets = (1 to (10 * firstBatchSize)).map(i=>Ticket(i)).toVector
+      def mkTickets = (1 to (numberOfBatchesFirstBatchSize * firstBatchSize)).map(Ticket).toVector
 
       val eventName = EventName("Madlib")
       val ticketingActor = system.actorOf(TicketSeller.props(eventName.value))
@@ -49,16 +50,16 @@ class TickerSellerSpec extends TestKit(ActorSystem("testTickets"))
 
       expectMsg(Tickets(eventName, bought))
 
-      val secondBatchSize = 5
-      val nrBatches = 18
+      val secondBatchSize = firstBatchSize / 2
+      val numberOfRemainingBatchesSecondBatchSize = (numberOfBatchesFirstBatchSize - 1) * 2 // One batch was already taken
 
-      val batches = (1 to nrBatches)
+      val batches = (1 to numberOfRemainingBatchesSecondBatchSize)
       batches.foreach(_ => ticketingActor ! Buy(secondBatchSize))
 
-      val tickets = receiveN(nrBatches)
+      val tickets = receiveN(numberOfRemainingBatchesSecondBatchSize)
 
       tickets.zip(batches).foreach {
-        case (Tickets(event, bought), ix) =>
+        case (Tickets(_, bought), ix) =>
           bought.size must equal(secondBatchSize)
           val last = ix * secondBatchSize + firstBatchSize
           val first = ix * secondBatchSize + firstBatchSize - (secondBatchSize - 1)
