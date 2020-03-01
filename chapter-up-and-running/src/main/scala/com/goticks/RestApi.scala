@@ -8,12 +8,12 @@ import akka.http.scaladsl.server._
 import akka.pattern.ask
 import akka.util.Timeout
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
 class RestApi(system: ActorSystem, timeout: Timeout)
     extends RestRoutes {
-  implicit val requestTimeout = timeout
-  implicit def executionContext = system.dispatcher
+  implicit val requestTimeout: Timeout = timeout
+  implicit def executionContext: ExecutionContextExecutor = system.dispatcher
 
   def createBoxOffice = system.actorOf(BoxOffice.props, BoxOffice.name)
 }
@@ -95,22 +95,22 @@ trait BoxOfficeApi {
   lazy val boxOffice = createBoxOffice()
 
   def createEvent(event: String, nrOfTickets: Int) =
-    boxOffice.ask(CreateEvent(event, nrOfTickets))
+    boxOffice.ask(CreateEvent(EventName(event), nrOfTickets))
       .mapTo[EventResponse]
 
   def getEvents() =
     boxOffice.ask(GetEvents).mapTo[Events]
 
   def getEvent(event: String) =
-    boxOffice.ask(GetEvent(event))
+    boxOffice.ask(GetEvent(EventName(event)))
       .mapTo[Option[Event]]
 
   def cancelEvent(event: String) =
-    boxOffice.ask(CancelEvent(event))
+    boxOffice.ask(CancelEvent(EventName(event)))
       .mapTo[Option[Event]]
 
   def requestTickets(event: String, tickets: Int) =
-    boxOffice.ask(GetTickets(event, tickets))
+    boxOffice.ask(GetTickets(EventName(event), tickets))
       .mapTo[TicketSeller.Tickets]
 }
 //

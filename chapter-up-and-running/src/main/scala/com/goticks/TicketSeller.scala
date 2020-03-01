@@ -1,12 +1,13 @@
 package com.goticks
 
-import akka.actor.{ Actor, Props, PoisonPill }
+import akka.actor.{Actor, PoisonPill, Props}
+import com.goticks.BoxOffice.EventName
 
 object TicketSeller {
-  def props(event: String) = Props(new TicketSeller(event))
+  def props(event: String) = Props(new TicketSeller(EventName(event)))
 
   case class Ticket(id: Int)
-  case class Tickets(event: String,
+  case class Tickets(event: EventName,
                      entries: Vector[Ticket] = Vector.empty[Ticket])
 
   sealed trait TicketSellerMessage
@@ -16,7 +17,7 @@ object TicketSeller {
   case object Cancel extends TicketSellerMessage
 }
 
-class TicketSeller(event: String) extends Actor {
+class TicketSeller(event: EventName) extends Actor {
   import TicketSeller._
 
   var tickets = Vector.empty[Ticket]
