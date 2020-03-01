@@ -2,6 +2,7 @@ package com.goticks
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
+import com.goticks.BoxOffice.EventName
 import org.scalatest.{MustMatchers, WordSpecLike}
 
 class TickerSellerSpec extends TestKit(ActorSystem("testTickets"))
@@ -14,13 +15,13 @@ class TickerSellerSpec extends TestKit(ActorSystem("testTickets"))
       import TicketSeller._
 
       def mkTickets = (1 to 10).map(i=>Ticket(i)).toVector
-      val event = "RHCP"
-      val ticketingActor = system.actorOf(TicketSeller.props(event))
+      val eventName = EventName("RHCP")
+      val ticketingActor = system.actorOf(TicketSeller.props(eventName.value))
 
       ticketingActor ! Add(mkTickets)
       ticketingActor ! Buy(1)
 
-      expectMsg(Tickets(event, Vector(Ticket(1))))
+      expectMsg(Tickets(eventName, Vector(Ticket(1))))
 
       val nrs = (2 to 10)
       nrs.foreach(_ => ticketingActor ! Buy(1))
@@ -29,7 +30,7 @@ class TickerSellerSpec extends TestKit(ActorSystem("testTickets"))
       tickets.zip(nrs).foreach { case (Tickets(event, Vector(Ticket(id))), ix) => id must be(ix) }
 
       ticketingActor ! Buy(1)
-      expectMsg(Tickets(event))
+      expectMsg(Tickets(eventName))
     }
 
     "Sell tickets in batches until they are sold out" in {
@@ -39,14 +40,14 @@ class TickerSellerSpec extends TestKit(ActorSystem("testTickets"))
 
       def mkTickets = (1 to (10 * firstBatchSize)).map(i=>Ticket(i)).toVector
 
-      val event = "Madlib"
-      val ticketingActor = system.actorOf(TicketSeller.props(event))
+      val eventName = EventName("Madlib")
+      val ticketingActor = system.actorOf(TicketSeller.props(eventName.value))
 
       ticketingActor ! Add(mkTickets)
       ticketingActor ! Buy(firstBatchSize)
       val bought = (1 to firstBatchSize).map(Ticket).toVector
 
-      expectMsg(Tickets(event, bought))
+      expectMsg(Tickets(eventName, bought))
 
       val secondBatchSize = 5
       val nrBatches = 18
@@ -65,10 +66,10 @@ class TickerSellerSpec extends TestKit(ActorSystem("testTickets"))
       }
 
       ticketingActor ! Buy(1)
-      expectMsg(Tickets(event))
+      expectMsg(Tickets(eventName))
 
       ticketingActor ! Buy(10)
-      expectMsg(Tickets(event))
+      expectMsg(Tickets(eventName))
     }
   }
 }

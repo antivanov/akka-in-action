@@ -37,28 +37,28 @@ trait RestRoutes extends BoxOfficeApi
     }
 
   def eventRoute =
-    pathPrefix("events" / Segment) { event =>
+    pathPrefix("events" / Segment) { eventName =>
       pathEndOrSingleSlash {
         post {
           // POST /events/:event
           entity(as[EventDescription]) { ed =>
-            onSuccess(createEvent(event, ed.tickets)) {
+            onSuccess(createEvent(eventName, ed.tickets)) {
               case BoxOffice.EventCreated(event) => complete(Created, event)
               case BoxOffice.EventExists =>
-                val err = Error(s"$event event exists already.")
+                val err = Error(s"$eventName event exists already.")
                 complete(BadRequest, err)
             }
           }
         } ~
         get {
           // GET /events/:event
-          onSuccess(getEvent(event)) {
+          onSuccess(getEvent(eventName)) {
             _.fold(complete(NotFound))(e => complete(OK, e))
           }
         } ~
         delete {
           // DELETE /events/:event
-          onSuccess(cancelEvent(event)) {
+          onSuccess(cancelEvent(eventName)) {
             _.fold(complete(NotFound))(e => complete(OK, e))
           }
         }
@@ -68,12 +68,12 @@ trait RestRoutes extends BoxOfficeApi
 
 
   def ticketsRoute =
-    pathPrefix("events" / Segment / "tickets") { event =>
+    pathPrefix("events" / Segment / "tickets") { eventName =>
       post {
         pathEndOrSingleSlash {
           // POST /events/:event/tickets
           entity(as[TicketRequest]) { request =>
-            onSuccess(requestTickets(event, request.tickets)) { tickets =>
+            onSuccess(requestTickets(eventName, request.tickets)) { tickets =>
               if(tickets.entries.isEmpty) complete(NotFound)
               else complete(Created, tickets)
             }
