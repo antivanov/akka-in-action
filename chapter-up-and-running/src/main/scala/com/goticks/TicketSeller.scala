@@ -5,14 +5,15 @@ import akka.actor.{ Actor, Props, PoisonPill }
 object TicketSeller {
   def props(event: String) = Props(new TicketSeller(event))
 
-  case class Add(tickets: Vector[Ticket])
-  case class Buy(tickets: Int)
   case class Ticket(id: Int)
   case class Tickets(event: String,
                      entries: Vector[Ticket] = Vector.empty[Ticket])
-  case object GetEvent
-  case object Cancel
 
+  sealed trait TicketSellerMessage
+  case class Add(tickets: Vector[Ticket]) extends TicketSellerMessage
+  case class Buy(tickets: Int) extends TicketSellerMessage
+  case object GetEvent extends TicketSellerMessage
+  case object Cancel extends TicketSellerMessage
 }
 
 class TicketSeller(event: String) extends Actor {
