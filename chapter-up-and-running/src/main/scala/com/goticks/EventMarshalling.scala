@@ -16,7 +16,10 @@ case class Error(message: String)
 trait EventMarshalling  extends DefaultJsonProtocol {
   import BoxOffice._
 
-  implicit val eventNameFormat: RootJsonFormat[EventName] = jsonFormat1(EventName)
+  implicit val eventNameFormat: RootJsonFormat[EventName] = new RootJsonFormat[EventName] {
+    override def write(obj: EventName): JsValue = JsString(obj.value)
+    override def read(json: JsValue): EventName = EventName(json.convertTo[String])
+  }
   implicit val eventFormat: RootJsonFormat[Event] = jsonFormat2(Event)
   implicit val eventsFormat: RootJsonFormat[Events] = jsonFormat1(Events)
   implicit val ticketFormat: RootJsonFormat[TicketSeller.Ticket] = jsonFormat1(TicketSeller.Ticket)
