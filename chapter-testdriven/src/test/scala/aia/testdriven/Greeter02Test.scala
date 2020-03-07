@@ -35,7 +35,7 @@ object Greeter02 {
 class Greeter02(listener: Option[ActorRef])
   extends Actor with ActorLogging {
   def receive = {
-    case Greeting(who) =>
+    case GreetingMessage(who) =>
       val message = "Hello " + who + "!"
       log.info(message)
       listener.foreach(_ ! message)
