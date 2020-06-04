@@ -8,7 +8,6 @@ import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.concurrent.ScalaFutures
 
-import scala.concurrent.duration._
 import concurrent.duration._
 
 class GreetingsSpec extends TestKit(GreetingsSpec.testSystem) with WordSpecLike with MustMatchers with ScalaFutures with BeforeAndAfterAll {
@@ -29,7 +28,7 @@ class GreetingsSpec extends TestKit(GreetingsSpec.testSystem) with WordSpecLike 
       }
     }
 
-    "be able to receive a greeting and log it, version 2" in {
+    "be able to receive a greeting and log it, version 1 with WireTap" in {
       val greetingActorRef = system.actorOf(Props(new GreetingActor1 with WireTap))
 
       EventFilter.info(message = "Hello Bob",
@@ -39,8 +38,26 @@ class GreetingsSpec extends TestKit(GreetingsSpec.testSystem) with WordSpecLike 
       }
     }
 
-    //TODO: GreetingActor2
-    //TODO: GreetingActor3
+    "respond with a greeting and log it, version 2" in {
+      val greetingActorRef = system.actorOf(Props(new GreetingActor2(testActor)))
+      EventFilter.info(message = "Hello Bob",
+        occurrences = 1).intercept {
+        greetingActorRef ! Greeting("Bob")
+        expectMsg("Hello Bob")
+      }
+    }
+
+    "aggregate messages and return them when requested, version 3" in {
+      val greetingActorRef = system.actorOf(Props(new GreetingActor3()))
+      val messagesNumber = 10
+      val messages = (0 to messagesNumber).map({ idx =>
+        Greeting(f"Bob${idx}")
+      })
+      messages.foreach { message =>
+        greetingActorRef ! message
+      }
+      greetingActorRef.ask(GetGreetings).mapTo[Vector[Greeting]].futureValue mustEqual messages
+    }
   }
 
   override protected def afterAll(): Unit = {
@@ -90,7 +107,7 @@ class GreetingActor3 extends Actor with ActorLogging {
     case msg: Greeting =>
       log.info("Hello %s" format msg.name)
       receivedGreetings = receivedGreetings :+ msg
-    case msg: GetGreetings =>
+    case msg @ GetGreetings =>
       sender() ! receivedGreetings
   }
 }
