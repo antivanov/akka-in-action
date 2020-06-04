@@ -1,38 +1,46 @@
 package aia.testdriven
 
-import org.scalatest.{BeforeAndAfterAll, MustMatchers, WordSpec}
-import akka.testkit.TestKit
+import org.scalatest.{BeforeAndAfterAll, MustMatchers, WordSpecLike}
+import akka.testkit.{EventFilter, TestKit}
 import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
+import com.typesafe.config.{Config, ConfigFactory}
+import org.scalatest.concurrent.ScalaFutures
 
+import scala.concurrent.duration._
 import concurrent.duration._
 
-class GreetingsSpec extends TestKit(ActorSystem("testgreetings")) with WordSpec with MustMatchers with BeforeAndAfterAll {
+class GreetingsSpec extends TestKit(GreetingsSpec.testSystem) with WordSpecLike with MustMatchers with ScalaFutures with BeforeAndAfterAll {
 
-  case class Greeting(name: String)
-
+  override implicit val patienceConfig: PatienceConfig = PatienceConfig(timeout = 5 seconds, interval = 100 milliseconds)
   implicit val timeout = Timeout(1 second)
   "A greeting actor " must {
-    "respond to a greeting and state it's name" in {
+    "respond to a greeting and tell name" in {
       val greetingActorRef = system.actorOf(Props(new GreetingActor(name = "Alice")))
       val response = greetingActorRef.ask(Greeting("Bob"))
-      response.mapTo[Greeting].onComplete {  =>
-        //TODO:
-      }
+      response.mapTo[Greeting].futureValue mustEqual Greeting("Alice", "Hello Bob")
     }
     "be able to receive a greeting and log it, version 1" in {
       val greetingActorRef = system.actorOf(Props[GreetingActor1])
-      greetingActorRef ! Greeting("Bob")
-      // sending is asynchronous, how do we know it is done?
+      EventFilter.info(message = "Hello Bob",
+        occurrences = 1).intercept {
+        greetingActorRef ! Greeting("Bob")
+      }
     }
 
     "be able to receive a greeting and log it, version 2" in {
       val greetingActorRef = system.actorOf(Props(new GreetingActor1 with WireTap))
-      greetingActorRef ! Greeting("Bob")
-      // how do we know it is done?
-      expectMsg(Greeting("Bob"))
+
+      EventFilter.info(message = "Hello Bob",
+        occurrences = 1).intercept {
+        greetingActorRef ! Greeting("Bob")
+        expectMsg(Greeting("Bob"))
+      }
     }
+
+    //TODO: GreetingActor2
+    //TODO: GreetingActor3
   }
 
   override protected def afterAll(): Unit = {
@@ -55,7 +63,7 @@ case class GetGreetings()
 
 class GreetingActor(val name: String) extends Actor {
   def receive = {
-    case msg: Greeting => sender() ! Greeting(name, s"Hello $msg.name")
+    case msg: Greeting => sender() ! Greeting(name, s"Hello ${msg.name}")
   }
 }
 
@@ -84,6 +92,16 @@ class GreetingActor3 extends Actor with ActorLogging {
       receivedGreetings = receivedGreetings :+ msg
     case msg: GetGreetings =>
       sender() ! receivedGreetings
+  }
+}
+
+object GreetingsSpec {
+  val testSystem = {
+    val config: Config = ConfigFactory.parseString(
+      """
+         akka.loggers = [akka.testkit.TestEventListener]
+      """)
+    ActorSystem("testsystem", config)
   }
 }
 
