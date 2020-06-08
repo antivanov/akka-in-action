@@ -16,8 +16,8 @@ trait TicketInfoService extends WebServiceCalls {
   // recover with empty sequence
   def withEmptySeq[T]: Recovery[Seq[T]] = { case NonFatal(e) => Seq() }
 
-  // recover with the ticketInfo that was built in the previous step
-  def withPrevious(previous: TicketInfo): Recovery[TicketInfo] = {
+  // recover with the value that was built in the previous step
+  def withPrevious[T](previous: T): Recovery[T] = {
     case NonFatal(e) => previous
   }
 
@@ -57,15 +57,15 @@ trait TicketInfoService extends WebServiceCalls {
     ticketInfo.event.map { event =>
       callTrafficService(ticketInfo.userLocation, event.location, event.time).map{ routeResponse =>
         ticketInfo.copy(travelAdvice = Some(TravelAdvice(routeByCar = routeResponse)))
-      }
+      }.recover(withPrevious(ticketInfo))
     }.getOrElse(Future.successful(ticketInfo))
   }
 
   def getCarRoute(ticketInfo: TicketInfo): Future[TicketInfo] = {
     ticketInfo.event.map { event =>
       callTrafficService(ticketInfo.userLocation, event.location, event.time).map{ routeResponse =>
-        val newTravelAdvice = ticketInfo.travelAdvice.map(_.copy(routeByCar = routeResponse))
-        ticketInfo.copy(travelAdvice = newTravelAdvice)
+        val newTravelAdvice = ticketInfo.travelAdvice.getOrElse(TravelAdvice()).copy(routeByCar = routeResponse)
+        ticketInfo.copy(travelAdvice = Some(newTravelAdvice))
       }.recover(withPrevious(ticketInfo))
     }.getOrElse(Future.successful(ticketInfo))
   }
@@ -73,8 +73,8 @@ trait TicketInfoService extends WebServiceCalls {
   def getPublicTransportAdvice(ticketInfo: TicketInfo): Future[TicketInfo] = {
     ticketInfo.event.map { event =>
       callPublicTransportService(ticketInfo.userLocation, event.location, event.time).map{ publicTransportResponse =>
-        val newTravelAdvice = ticketInfo.travelAdvice.map(_.copy(publicTransportAdvice = publicTransportResponse))
-        ticketInfo.copy(travelAdvice = newTravelAdvice)
+        val newTravelAdvice = ticketInfo.travelAdvice.getOrElse(TravelAdvice()).copy(publicTransportAdvice = publicTransportResponse)
+        ticketInfo.copy(travelAdvice = Some(newTravelAdvice))
       }.recover(withPrevious(ticketInfo))
     }.getOrElse(Future.successful(ticketInfo))
   }
@@ -115,10 +115,7 @@ trait TicketInfoService extends WebServiceCalls {
   }
 
   def getSuggestions(event: Event): Future[Seq[Event]] = {
-
-    val futureArtists = callSimilarArtistsService(event).recover(withEmptySeq)
-
-    for(artists <- futureArtists.recover(withEmptySeq);
+    for(artists <- callSimilarArtistsService(event).recover(withEmptySeq);
         events <- getPlannedEvents(event, artists).recover(withEmptySeq)
     ) yield events
   }
@@ -126,9 +123,9 @@ trait TicketInfoService extends WebServiceCalls {
   def getSuggestionsWithFlatMapAndMap(event: Event): Future[Seq[Event]] = {
 
     val futureArtists = callSimilarArtistsService(event).recover(withEmptySeq)
-    futureArtists.flatMap { artists=>
-      Future.traverse(artists)(artist=> callArtistCalendarService(artist, event.location))
-    }.recover(withEmptySeq)
+    futureArtists.flatMap { artists =>
+      getPlannedEvents(event, artists).recover(withEmptySeq)
+    }
   }
 
   def getTravelAdviceUsingForComprehension(info: TicketInfo, event: Event): Future[TicketInfo] = {
