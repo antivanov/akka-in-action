@@ -15,6 +15,8 @@ class TestSuper() extends Actor {
   }
 }
 
+case class GetLicensePaths(paths: List[String])
+
 class GetLicenseCreator(nrActors: Int, nextStep: ActorRef) extends Actor {
   var createdActors = Seq[ActorRef]()
 
@@ -47,6 +49,8 @@ class GetLicenseCreator2(nrActors: Int, nextStep: ActorRef) extends Actor {
       val child = context.actorOf(Props(new GetLicense(nextStep)), "GetLicense"+nr)
       context.watch(child)
     })
+    val childrenPaths = context.children.map(_.path.toStringWithoutAddress)
+    nextStep ! GetLicensePaths(childrenPaths.toList)
   }
 
   def receive = {

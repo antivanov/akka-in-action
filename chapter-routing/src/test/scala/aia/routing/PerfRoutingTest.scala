@@ -128,7 +128,7 @@ class PerfRoutingTest
       routeesMsg2.getRoutees.size must be (2)
       import collection.JavaConversions._
       for(routee <- routeesMsg2.getRoutees) {
-        routees.get(0).send(msg, endProbe.ref)
+        routee.send(msg, endProbe.ref)
       }
       val procMsg1 = endProbe.expectMsgType[PerformanceRoutingMessage](1 second)
       println("Received: "+ procMsg1)
@@ -191,11 +191,10 @@ class PerfRoutingTest
         classOf[DeadLetter])
 
       val creator = system.actorOf(Props( new GetLicenseCreator2(2, endProbe.ref)),"GetLicenseCreator-test5")
-      val paths = List(
-        "/user/GetLicenseCreator-test5/GetLicense0",
-        "/user/GetLicenseCreator-test5/GetLicense1"
-      )
-      val router = system.actorOf(RoundRobinGroup(paths).props(), "router-test5")
+
+      // Also possible not to hardcode the paths for GetLicense actors
+      val getLicenseActorPaths: GetLicensePaths = endProbe.expectMsgType[GetLicensePaths](1 second)
+      val router = system.actorOf(RoundRobinGroup(getLicenseActorPaths.paths).props(), "router-test5")
 
       creator ! "KillFirst"
 
@@ -248,6 +247,7 @@ class PerfRoutingTest
         "/user/GetLicenseCreator-test6/GetLicense0",
         "/user/GetLicenseCreator-test6/GetLicense1"
       )
+      endProbe.expectMsgType[GetLicensePaths](1 second)
       val router = system.actorOf(RoundRobinGroup(paths).props(), "groupRouter-test6")
 
       deadProbe.expectNoMsg()
@@ -299,15 +299,14 @@ class PerfRoutingTest
         None)
 
       router ! msg
-
-      val deadMsg = deadProbe.expectMsgType[DeadLetter](1 second)
-      println(deadMsg)
-      router ! msg
-
-      endProbe.expectMsgType[PerformanceRoutingMessage](1 second)
-      router ! msg
-
       deadProbe.expectMsgType[DeadLetter](1 second)
+
+      router ! msg
+      endProbe.expectMsgType[PerformanceRoutingMessage](1 second)
+
+      router ! msg
+      deadProbe.expectMsgType[DeadLetter](1 second)
+
       system.stop(router)
       system.stop(creator)
     }
@@ -330,7 +329,7 @@ class PerfRoutingTest
       system.stop(router)
     }
   }
-    "The Router" must {
+  "The Router" must {
     "routes using roundrobin" in {
 
       val endProbe = TestProbe()
@@ -346,8 +345,7 @@ class PerfRoutingTest
       for (index <- 0 until 10) {
         router ! msg
       }
-      val processedMessages = endProbe.receiveN(10, 5 seconds).collect
-      { case m: PerformanceRoutingMessage => m }
+      val processedMessages = endProbe.receiveN(10, 5 seconds).collect { case m: PerformanceRoutingMessage => m }
       processedMessages.size must be(10)
 
       val grouped = processedMessages.groupBy(_.processedBy)
@@ -367,27 +365,31 @@ class PerfRoutingTest
       val routeesMsg = Await.result(future, 1.second).asInstanceOf[Routees]
       val routees = routeesMsg.getRoutees
       routees.size must be (2)
-      routees.get(0).send(SetService("250", 250 millis), endProbe.ref)
-      routees.get(1).send(SetService("500", 500 millis), endProbe.ref)
+      val actor1ServiceTimeMs = 250
+      val actor2ServiceTimeMs = 500
+      routees.get(0).send(SetService("actor1", actor1ServiceTimeMs millis), endProbe.ref)
+      routees.get(1).send(SetService("actor2", actor2ServiceTimeMs millis), endProbe.ref)
 
       val msg = PerformanceRoutingMessage(
         ImageProcessing.createPhotoString(new Date(), 60, "123xyz"),
         None,
         None)
 
-      for (index <- 0 until 10) {
-        Thread.sleep(200)
+      val messageNumber = 10
+      val messageIntervalMs = 200
+      for (_ <- 0 until messageNumber) {
+        Thread.sleep(messageIntervalMs)
         router ! msg
       }
       val processedMessages = endProbe.receiveN(10, 5 seconds).collect { case m: PerformanceRoutingMessage => m }
       processedMessages.size must be(10)
       val grouped = processedMessages.groupBy(_.processedBy)
-      val msgProcessedByActor1 = grouped.get(Some("250"))
+      val msgProcessedByActor1 = grouped.get(Some("actor1"))
         .getOrElse(Seq())
-      val msgProcessedByActor2 = grouped.get(Some("500"))
+      val msgProcessedByActor2 = grouped.get(Some("actor2"))
         .getOrElse(Seq())
-      msgProcessedByActor1 must have size (7)
-      msgProcessedByActor2 must have size (3)
+      msgProcessedByActor1 must have size (((messageNumber * messageIntervalMs) / actor1ServiceTimeMs ) - 1)
+      msgProcessedByActor2 must have size (((messageNumber * messageIntervalMs) / actor2ServiceTimeMs ) - 1)
 
       system.stop(router)
     }
@@ -397,8 +399,10 @@ class PerfRoutingTest
 
       val router = system.actorOf(SmallestMailboxPool(0).props(Props(new GetLicense(endProbe.ref, 250 millis))), "smallestMailboxRouter-test2")
 
-      val actor1 = system.actorOf(Props(new GetLicense(endProbe.ref, 250 millis)),"250")
-      val actor2 = system.actorOf(Props(new GetLicense(endProbe.ref, 500 millis)),"500")
+      val actor1ServiceTimeMs = 250
+      val actor2ServiceTimeMs = 500
+      val actor1 = system.actorOf(Props(new GetLicense(endProbe.ref, actor1ServiceTimeMs millis)),"actor1")
+      val actor2 = system.actorOf(Props(new GetLicense(endProbe.ref, actor2ServiceTimeMs millis)),"actor2")
       router ! AddRoutee(ActorRefRoutee(actor1))
       router ! AddRoutee(ActorRefRoutee(actor2))
 
@@ -412,19 +416,21 @@ class PerfRoutingTest
         None,
         None)
 
-      for (index <- 0 until 10) {
-        Thread.sleep(200)
+      val messageNumber = 10
+      val messageIntervalMs = 200
+      for (_ <- 0 until messageNumber) {
+        Thread.sleep(messageIntervalMs)
         router ! msg
       }
       val processedMessages = endProbe.receiveN(10, 5 seconds).collect { case m: PerformanceRoutingMessage => m }
       processedMessages.size must be(10)
       val grouped = processedMessages.groupBy(_.processedBy)
-      val msgProcessedByActor1 = grouped.get(Some("250"))
+      val msgProcessedByActor1 = grouped.get(Some("actor1"))
         .getOrElse(Seq())
-      val msgProcessedByActor2 = grouped.get(Some("500"))
+      val msgProcessedByActor2 = grouped.get(Some("actor2"))
         .getOrElse(Seq())
-      msgProcessedByActor1 must have size (7)
-      msgProcessedByActor2 must have size (3)
+      msgProcessedByActor1 must have size (((messageNumber * messageIntervalMs) / actor1ServiceTimeMs ) - 1)
+      msgProcessedByActor2 must have size (((messageNumber * messageIntervalMs) / actor2ServiceTimeMs ) - 1)
 
       system.stop(router)
     }
@@ -440,29 +446,31 @@ class PerfRoutingTest
       val routeesMsg = Await.result(future, 1.second).asInstanceOf[Routees]
       val routees = routeesMsg.getRoutees
       routees.size must be (2)
-      routees.get(0).send(SetService("250", 250 millis), endProbe.ref)
-      routees.get(1).send(SetService("500", 500 millis), endProbe.ref)
+      val actor1ServiceTimeMs = 250
+      val actor2ServiceTimeMs = 500
+      routees.get(0).send(SetService("actor1", actor1ServiceTimeMs millis), endProbe.ref)
+      routees.get(1).send(SetService("actor2", actor2ServiceTimeMs millis), endProbe.ref)
 
       val msg = PerformanceRoutingMessage(
         ImageProcessing.createPhotoString(new Date(), 60, "123xyz"),
         None,
         None)
 
-      for (index <- 0 until 10) {
+      val messageNumber = 10
+      val messageIntervalMs = 200
+      for (_ <- 0 until messageNumber) {
+        Thread.sleep(messageIntervalMs)
         router ! msg
       }
       val processedMessages = endProbe.receiveN(10, 5 seconds).collect { case m: PerformanceRoutingMessage => m }
       processedMessages.size must be(10)
-      println(processedMessages)
       val grouped = processedMessages.groupBy(_.processedBy)
-      val msgProcessedByActor1 = grouped.get(Some("250"))
+      val msgProcessedByActor1 = grouped.get(Some("actor1"))
         .getOrElse(Seq())
-      val msgProcessedByActor2 = grouped.get(Some("500"))
+      val msgProcessedByActor2 = grouped.get(Some("actor2"))
         .getOrElse(Seq())
-
-      msgProcessedByActor1.size must be(7 +- 1)
-      msgProcessedByActor2.size must be(3 +- 1)
-      testSystem.terminate()
+      msgProcessedByActor1.size.mustBe (((messageNumber * messageIntervalMs) / actor1ServiceTimeMs ) - 1 +- 1)
+      msgProcessedByActor2.size.mustBe (((messageNumber * messageIntervalMs) / actor2ServiceTimeMs ) - 1 +- 1)
 
       system.stop(router)
     }
