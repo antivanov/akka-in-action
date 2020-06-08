@@ -36,7 +36,7 @@ class ScatterGatherTest
       val photoDate = new Date()
       val photoSpeed = 60
       val msg = PhotoMessage("id1",
-        ImageProcessing.createPhotoString(photoDate, photoSpeed))
+        PhotoString.createPhotoString(photoDate, photoSpeed))
 
       actorRef ! msg
 

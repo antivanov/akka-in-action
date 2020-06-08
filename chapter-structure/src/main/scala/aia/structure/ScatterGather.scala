@@ -7,52 +7,48 @@ import scala.collection.mutable.ListBuffer
 import akka.actor._
 import java.text.SimpleDateFormat
 
-
 case class PhotoMessage(id: String,
-                        photo: String,
+                        photo: PhotoString,
                         creationTime: Option[Date] = None,
                         speed: Option[Int] = None)
 
+case class PhotoString(value: String) extends AnyVal
 
-object ImageProcessing {
+object PhotoString {
   val dateFormat = new SimpleDateFormat("ddMMyyyy HH:mm:ss.SSS")
-  def getSpeed(image: String): Option[Int] = {
-    val attributes = image.split('|')
+  def getSpeed(photoString: PhotoString): Option[Int] = {
+    val attributes = photoString.value.split('|')
     if (attributes.size == 3)
       Some(attributes(1).toInt)
     else
       None
   }
-  def getTime(image: String): Option[Date] = {
-    val attributes = image.split('|')
+  def getTime(photoString: PhotoString): Option[Date] = {
+    val attributes = photoString.value.split('|')
     if (attributes.size == 3)
       Some(dateFormat.parse(attributes(0)))
     else
       None
   }
-  def getLicense(image: String): Option[String] = {
-    val attributes = image.split('|')
+  def getLicense(photoString: PhotoString): Option[String] = {
+    val attributes = photoString.value.split('|')
     if (attributes.size == 3)
       Some(attributes(2))
     else
       None
   }
-  def createPhotoString(date: Date, speed: Int): String = {
-    createPhotoString(date, speed, " ")
-  }
 
   def createPhotoString(date: Date,
                         speed: Int,
-                        license: String): String = {
-    "%s|%s|%s".format(dateFormat.format(date), speed, license)
-  }
+                        license: Option[String] = None): PhotoString =
+    PhotoString("%s|%s|%s".format(dateFormat.format(date), speed, license.getOrElse(" ")))
 }
 
 class GetSpeed(pipe: ActorRef) extends Actor {
   def receive = {
     case msg: PhotoMessage => {
       pipe ! msg.copy(
-        speed = ImageProcessing.getSpeed(msg.photo))
+        speed = PhotoString.getSpeed(msg.photo))
     }
   }
 }
@@ -60,7 +56,7 @@ class GetTime(pipe: ActorRef) extends Actor {
   def receive = {
     case msg: PhotoMessage => {
       pipe ! msg.copy(creationTime =
-        ImageProcessing.getTime(msg.photo))
+        PhotoString.getTime(msg.photo))
     }
   }
 }

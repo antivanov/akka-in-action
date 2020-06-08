@@ -24,7 +24,7 @@ class AggregatorTest
       val endProbe = TestProbe()
       val actorRef = system.actorOf(
         Props(new Aggregator(timeout, endProbe.ref)))
-      val photoStr = ImageProcessing.createPhotoString(new Date(), 60)
+      val photoStr = PhotoString.createPhotoString(new Date(), 60)
       val msg1 = PhotoMessage("id1",
         photoStr,
         Some(new Date()),
@@ -47,15 +47,17 @@ class AggregatorTest
     }
     "send message after timeout" in {
 
+      val shortTimeout = 50 milliseconds
       val endProbe = TestProbe()
       val actorRef = system.actorOf(
-        Props(new Aggregator(timeout, endProbe.ref)))
-      val photoStr = ImageProcessing.createPhotoString(
+        Props(new Aggregator(shortTimeout, endProbe.ref)))
+      val photoStr = PhotoString.createPhotoString(
         new Date(), 60)
       val msg1 = PhotoMessage("id1",
         photoStr,
         Some(new Date()),
         None)
+
       actorRef ! msg1
 
       endProbe.expectMsg(msg1)
@@ -66,7 +68,7 @@ class AggregatorTest
       val endProbe = TestProbe()
       val actorRef = system.actorOf(
         Props(new Aggregator(timeout, endProbe.ref)))
-      val photoStr = ImageProcessing.createPhotoString(new Date(), 60)
+      val photoStr = PhotoString.createPhotoString(new Date(), 60)
 
       val msg1 = PhotoMessage("id1",
         photoStr,
