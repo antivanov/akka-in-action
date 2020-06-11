@@ -27,7 +27,6 @@ trait RouteSlip {
     if (newSlip.isEmpty) {
       nextTask ! message
     } else {
-
       nextTask ! RouteSlipMessage(
         routeSlip = newSlip,
         message = message)

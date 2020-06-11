@@ -64,7 +64,7 @@ class SpeedRouterLogic(minSpeed: Int, normalFlowPath: String, cleanUpPath: Strin
 
   def findRoutee(routees: immutable.IndexedSeq[Routee], path: String): Routee = {
     val routeeList = routees.flatMap {
-      case routee: ActorRefRoutee    => routees
+      case routee: ActorRefRoutee    => Seq(routee)
       case SeveralRoutees(routeeSeq) => routeeSeq
     }
     val search = routeeList.find { case routee: ActorRefRoutee => routee.ref.path.toString().endsWith(path) }

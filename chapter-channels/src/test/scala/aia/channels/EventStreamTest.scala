@@ -69,13 +69,13 @@ class EventStreamTest extends TestKit(ActorSystem("EventStreamTest"))
       giftModule.expectNoMsg(3 seconds)
 
     }
-    "unscribe messages" in {
+    "unsubscribe messages" in {
 
-      val DeliverOrder = TestProbe()
+      val deliverOrder = TestProbe()
       val giftModule = TestProbe()
 
       system.eventStream.subscribe(
-        DeliverOrder.ref,
+        deliverOrder.ref,
         classOf[Order])
       system.eventStream.subscribe(
         giftModule.ref,
@@ -84,13 +84,13 @@ class EventStreamTest extends TestKit(ActorSystem("EventStreamTest"))
       val msg = new Order("me", "Akka in Action", 3)
       system.eventStream.publish(msg)
 
-      DeliverOrder.expectMsg(msg)
+      deliverOrder.expectMsg(msg)
       giftModule.expectMsg(msg)
 
       system.eventStream.unsubscribe(giftModule.ref)
 
       system.eventStream.publish(msg)
-      DeliverOrder.expectMsg(msg)
+      deliverOrder.expectMsg(msg)
       giftModule.expectNoMsg(3 seconds)
 
     }

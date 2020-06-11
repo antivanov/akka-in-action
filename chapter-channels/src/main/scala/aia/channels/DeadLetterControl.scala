@@ -6,6 +6,5 @@ class EchoActor extends Actor {
   def receive = {
     case msg: AnyRef =>
       sender() ! msg
-
   }
 }
