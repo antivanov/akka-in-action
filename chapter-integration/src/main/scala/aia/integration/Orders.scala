@@ -4,7 +4,6 @@ import akka.camel.{ Producer, CamelMessage, Consumer }
 import akka.actor.ActorRef
 import net.liftweb.json.{ Serialization, DefaultFormats }
 import xml.XML
-import scala.concurrent.duration._
 
 
 case class Order(customerId: String, productId: String, number: Int)
@@ -40,7 +39,7 @@ class OrderConsumerXml(uri: String, next: ActorRef)
       val customer = (order \\ "customerId").text
       val productId = (order \\ "productId").text
       val number = (order \\ "number").text.toInt
-      next ! new Order(customer, productId, number)
+      next ! Order(customer, productId, number)
     }
   }
 }

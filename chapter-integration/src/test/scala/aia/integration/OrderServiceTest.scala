@@ -18,7 +18,7 @@ class OrderServiceTest extends WordSpec
 
   implicit val executionContext = system.dispatcher
   implicit val requestTimeout = akka.util.Timeout(1 second)
-  val processOrders = 
+  val processOrders =
     system.actorOf(Props(new ProcessOrders), "orders")
 
   "The order service" should {
