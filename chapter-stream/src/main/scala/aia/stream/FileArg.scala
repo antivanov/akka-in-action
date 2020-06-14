@@ -7,7 +7,7 @@ object FileArg {
     if(path.startsWith("~/")) {
       Paths.get(System.getProperty("user.home"), path.drop(2))
     } else {
-      Paths.get(path)      
+      Paths.get(path)
     }
   }
 }

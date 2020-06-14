@@ -1,24 +1,14 @@
 package aia.stream
 
-import java.nio.file.{ Files, Path, Paths }
-import java.nio.file.StandardOpenOption
+import java.nio.file.{Files, Path}
 import java.nio.file.StandardOpenOption._
 
-import java.time.ZonedDateTime
-
-import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-import scala.util.{ Success, Failure }
-
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 import akka.Done
-import akka.actor._
 import akka.util.ByteString
-
-import akka.stream.{ ActorAttributes, ActorMaterializer, IOResult }
-import akka.stream.scaladsl.{ FileIO, BidiFlow, Flow, Framing, Keep, Sink, Source }
-
-import akka.http.scaladsl.common.EntityStreamingSupport
+import akka.stream.{ActorMaterializer, IOResult}
+import akka.stream.scaladsl.{FileIO, Flow, Keep, Sink, Source}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model._
@@ -34,15 +24,15 @@ class ContentNegLogsApi(
   implicit val executionContext: ExecutionContext, 
   val materializer: ActorMaterializer
 ) extends EventMarshalling {
-  def logFile(id: String) = logsDir.resolve(id)
+  def logFile(id: String): Path = logsDir.resolve(id)
   
   val outFlow = Flow[Event].map { event => 
     ByteString(event.toJson.compactPrint)
   }
   
-  def logFileSource(logId: String) = 
+  def logFileSource(logId: String): Source[ByteString, Future[IOResult]] =
     FileIO.fromPath(logFile(logId))
-  def logFileSink(logId: String) = 
+  def logFileSink(logId: String): Sink[ByteString, Future[IOResult]] =
     FileIO.toPath(logFile(logId), Set(CREATE, WRITE, APPEND))
 
   def routes: Route = postRoute ~ getRoute ~ deleteRoute
@@ -64,7 +54,7 @@ class ContentNegLogsApi(
 
               case Success(IOResult(count, Success(Done))) =>
                 complete((StatusCodes.OK, LogReceipt(logId, count)))
-              case Success(IOResult(count, Failure(e))) =>
+              case Success(IOResult(_, Failure(e))) =>
                 complete((
                   StatusCodes.BadRequest, 
                   ParseError(logId, e.getMessage)

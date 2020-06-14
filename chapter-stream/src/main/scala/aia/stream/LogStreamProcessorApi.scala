@@ -41,19 +41,19 @@ class LogStreamProcessorApi(
   // this is just for testing, 
   // in a realistice application this would be a Sink to some other
   // service, for instance a Kafka Sink, or an email service.
-  val notificationSink = FileIO.toPath(notificationsDir.resolve("notifications.json"), Set(CREATE, WRITE, APPEND))
-  val metricsSink = FileIO.toPath(metricsDir.resolve("metrics.json"), Set(CREATE, WRITE, APPEND))
+  val notificationSink: Sink[ByteString, Future[IOResult]] = FileIO.toPath(notificationsDir.resolve("notifications.json"), Set(CREATE, WRITE, APPEND))
+  val metricsSink: Sink[ByteString, Future[IOResult]] = FileIO.toPath(metricsDir.resolve("metrics.json"), Set(CREATE, WRITE, APPEND))
 
 
   import akka.stream.{ FlowShape, Graph, OverflowStrategy } 
   import akka.stream.scaladsl.{ Broadcast, GraphDSL, MergePreferred, RunnableGraph }
   
-  type FlowLike = Graph[FlowShape[Event, ByteString], NotUsed]
+  type EventToByteStreamFlow = Graph[FlowShape[Event, ByteString], NotUsed]
 
-  def processEvents(logId: String): FlowLike = { 
+  def processEvents(logId: String): EventToByteStreamFlow = {
     val jsFlow = LogJson.jsonOutFlow
-    val notifyOutFlow = LogJson.notifyOutFlow
-    val metricOutFlow = LogJson.metricOutFlow
+    val notifyOutFlow: Flow[Summary, ByteString, NotUsed] = LogJson.notifyOutFlow
+    val metricOutFlow: Flow[Metric, ByteString, NotUsed] = LogJson.metricOutFlow
 
     Flow.fromGraph( 
       GraphDSL.create() { implicit builder => 
@@ -67,14 +67,14 @@ class LogStreamProcessorApi(
       val errDuration = 10 seconds
       val warnDuration = 1 minute
 
-      val toMetric = Flow[Event].collect {
+      val toMetric: Flow[Event, Metric, NotUsed] = Flow[Event].collect {
         case Event(_, service, _, time, _, Some(tag), Some(metric)) =>
           Metric(service, time, metric, tag) 
       }
 
 
 
-      val recordDrift = Flow[Metric]
+      val recordDrift: Flow[Metric, Metric, NotUsed] = Flow[Metric]
         .expand { metric => 
           Iterator.from(0).map(d => metric.copy(drift = d))
         }
@@ -85,17 +85,17 @@ class LogStreamProcessorApi(
       val wbcast = builder.add(Broadcast[Event](2))
       val ebcast = builder.add(Broadcast[Event](2))
       val cbcast = builder.add(Broadcast[Event](2))
-      val okcast = builder.add(Broadcast[Event](2))
+      val okbcast = builder.add(Broadcast[Event](2))
 
       val mergeNotify = builder.add(MergePreferred[Summary](2))
       val archive = builder.add(jsFlow)
 
 
 
-      val toNot = Flow[Event].map(e=> Summary(Vector(e)))
+      val toNot: Flow[Event, Summary, NotUsed] = Flow[Event].map(e => Summary(Vector(e)))
 
 
-      val ok = Flow[Event].filter(_.state == Ok) 
+      val ok = Flow[Event].filter(_.state == Ok)
       val warning = Flow[Event].filter(_.state == Warning)
       val error = Flow[Event].filter(_.state == Error)
       val critical = Flow[Event].filter(_.state == Critical)
@@ -105,7 +105,7 @@ class LogStreamProcessorApi(
         Flow[Event].groupedWithin(nr, duration)
           .map(events => Summary(events.toVector))
 
-      val rollupErr = rollup(nrErrors, errDuration)    
+      val rollupErr = rollup(nrErrors, errDuration)
       val rollupWarn = rollup(nrWarnings, warnDuration)    
 
 
@@ -125,13 +125,13 @@ class LogStreamProcessorApi(
 
 
       bcast ~> archBuf  ~> archive.in
-      bcast ~> ok       ~> okcast
+      bcast ~> ok       ~> okbcast
       bcast ~> warning  ~> wbcast
       bcast ~> error    ~> ebcast
       bcast ~> critical ~> cbcast
 
-      okcast ~> jsFlow ~> logFileSink(logId, Ok) 
-      okcast ~> metricBuf ~> 
+      okbcast ~> jsFlow ~> logFileSink(logId, Ok)
+      okbcast ~> metricBuf ~>
         toMetric ~> recordDrift ~> metricOutFlow ~> metricsSink
 
       cbcast ~> jsFlow ~> logFileSink(logId, Critical)
@@ -218,7 +218,7 @@ class LogStreamProcessorApi(
             // Handling Future result omitted here, done the same as before.
               case Success(IOResult(count, Success(Done))) =>
                 complete((StatusCodes.OK, LogReceipt(logId, count)))
-              case Success(IOResult(count, Failure(e))) =>
+              case Success(IOResult(_, Failure(e))) =>
                 complete((
                   StatusCodes.BadRequest, 
                   ParseError(logId, e.getMessage)

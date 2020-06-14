@@ -1,15 +1,6 @@
 package aia.stream
 
-import java.io.File
 import java.time.ZonedDateTime
-import scala.concurrent.Future
-import akka.NotUsed
-import akka.util.ByteString
-import akka.stream.IOResult
-import akka.stream.scaladsl.{ Source, FileIO, Framing }
-
-import scala.concurrent.duration.FiniteDuration
-
 
 case class Event(
   host: String,
@@ -32,19 +23,14 @@ object State {
   def norm(str: String): String = str.toLowerCase
   def norm(state: State): String = norm(state.toString)
 
-  val ok = norm(Ok)
-  val warning = norm(Warning)
-  val error = norm(Error)
-  val critical = norm(Critical)
+  val values: List[State] = List(Critical, Error, Ok, Warning)
 
-  def unapply(str: String): Option[State] = {
-    val normalized = norm(str)
-    if(normalized == norm(Ok)) Some(Ok)
-    else if(normalized == norm(Warning)) Some(Warning)
-    else if(normalized == norm(Error)) Some(Error)
-    else if(normalized == norm(Critical)) Some(Critical)
-    else None
+  private def valueMapping: Map[String, State] = values.foldLeft(Map[String, State]()) { (acc, state) =>
+    acc + (norm(state) -> state)
   }
+
+  def unapply(str: String): Option[State] =
+    valueMapping.get(norm(str))
 }
 
 case class LogReceipt(logId: String, written: Long)

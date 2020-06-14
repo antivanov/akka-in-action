@@ -1,22 +1,19 @@
 package aia.stream
 
-import java.nio.file.{ Files, Path }
+import java.nio.file.{Files, Path}
 import java.io.File
 import java.time.ZonedDateTime
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-import scala.util.{ Success, Failure }
-
-import akka.Done
+import scala.util.{Failure, Success}
+import akka.{Done, NotUsed}
 import akka.actor._
 import akka.util.ByteString
-
-import akka.stream.{ ActorAttributes, ActorMaterializer, IOResult }
+import akka.stream.{ActorAttributes, ActorMaterializer, IOResult}
 import akka.stream.scaladsl.JsonFraming
-import akka.stream.scaladsl.{ FileIO, BidiFlow, Flow, Framing, Keep, Sink, Source }
-
+import akka.stream.scaladsl.{BidiFlow, FileIO, Flow, Framing, Keep, Sink, Source}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model._
@@ -34,15 +31,15 @@ object LogJson extends EventMarshalling
     .collect { case Some(e) => e }
   }
 
-  def jsonInFlow(maxJsonObject: Int) = {
+  def jsonInFlow(maxJsonObject: Int): Flow[ByteString, Event, NotUsed] = {
     JsonFraming.objectScanner(maxJsonObject) 
       .map(_.decodeString("UTF8").parseJson.convertTo[Event])
   }
 
-  def jsonFramed(maxJsonObject: Int) =
+  def jsonFramed(maxJsonObject: Int): Flow[ByteString, ByteString, NotUsed] =
     JsonFraming.objectScanner(maxJsonObject) 
 
-  val jsonOutFlow = Flow[Event].map { event => 
+  val jsonOutFlow = Flow[Event].map { event =>
     ByteString(event.toJson.compactPrint)
   }
 
@@ -54,7 +51,7 @@ object LogJson extends EventMarshalling
     ByteString(m.toJson.compactPrint)
   }
 
-  val textOutFlow = Flow[Event].map{ event => 
+  val textOutFlow: Flow[Event, ByteString, NotUsed] = Flow[Event].map{ event =>
     ByteString(LogStreamProcessor.logLine(event))
   }
 

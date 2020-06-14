@@ -120,8 +120,8 @@ object LogStreamProcessor extends EventMarshalling {
             ZonedDateTime.parse(time.trim), 
             desc.trim
           )) 
-        case x => 
-          throw new LogParseException(s"Failed on line: $line")
+        case _ =>
+          throw LogParseException(s"Failed on line: $line")
       }
     } else None
   }

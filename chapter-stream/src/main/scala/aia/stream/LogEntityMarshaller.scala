@@ -1,46 +1,29 @@
 package aia.stream
 
-import akka.NotUsed
-import akka.stream.scaladsl.Framing
-import akka.stream.scaladsl.JsonFraming
-
-import akka.http.scaladsl.model.HttpCharsets._
-import akka.http.scaladsl.model.MediaTypes._
-import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model._
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import spray.json._
-
 
 import akka.http.scaladsl.marshalling.Marshaller
 import akka.http.scaladsl.marshalling.ToEntityMarshaller
 
 object LogEntityMarshaller extends EventMarshalling {
   
-  type LEM = ToEntityMarshaller[Source[ByteString, _]]
-  def create(maxJsonObject: Int): LEM = {
+  type EntityMarshaller = ToEntityMarshaller[Source[ByteString, _]]
+  def create(maxJsonObject: Int): EntityMarshaller = {
     val js = ContentTypes.`application/json`
     val txt = ContentTypes.`text/plain(UTF-8)`
 
-    val jsMarshaller = Marshaller.withFixedContentType(js) {
-      src:Source[ByteString, _] =>
+    val jsMarshaller: Marshaller[Source[ByteString, _], HttpEntity.Chunked] = Marshaller.withFixedContentType(js) { src: Source[ByteString, _] =>
       HttpEntity(js, src)
     }
 
-    val txtMarshaller = Marshaller.withFixedContentType(txt) {
-      src:Source[ByteString, _] => 
-      HttpEntity(txt, toText(src, maxJsonObject))
+    val txtMarshaller: Marshaller[Source[ByteString, _], HttpEntity.Chunked] = Marshaller.withFixedContentType(txt) { src: Source[ByteString, _] =>
+      HttpEntity(txt, src.via(LogJson.jsonToLogFlow(maxJsonObject)))
     }
 
     Marshaller.oneOf(jsMarshaller, txtMarshaller)
-  }
-
-  def toText(src: Source[ByteString, _], 
-             maxJsonObject: Int): Source[ByteString, _] = {
-    src.via(LogJson.jsonToLogFlow(maxJsonObject))
   }
 }
 

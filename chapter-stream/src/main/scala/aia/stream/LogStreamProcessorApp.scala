@@ -1,20 +1,17 @@
 package aia.stream
 
-import java.nio.file.{ Files, FileSystems, Path }
+import java.nio.file.{ Files, FileSystems }
 import scala.concurrent.Future
-import scala.concurrent.duration._
 
-import akka.NotUsed
-import akka.actor.{ ActorSystem , Actor, Props }
+import akka.actor.{ ActorSystem }
 import akka.event.Logging
 
 import akka.stream.{ ActorMaterializer, ActorMaterializerSettings, Supervision }
 
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
-import akka.http.scaladsl.server.Directives._
 
-import com.typesafe.config.{ Config, ConfigFactory }
+import com.typesafe.config.{ ConfigFactory }
 
 object LogStreamProcessorApp extends App {
 

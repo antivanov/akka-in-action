@@ -1,7 +1,5 @@
 package aia.stream
 
-import java.nio.file.{ Path, Paths }
-import java.nio.file.StandardOpenOption
 import java.nio.file.StandardOpenOption._
 
 import scala.concurrent.Future
@@ -12,7 +10,7 @@ import akka.stream.{ ActorMaterializer, IOResult }
 import akka.util.ByteString
 
 import spray.json._
-import com.typesafe.config.{ Config, ConfigFactory }
+import com.typesafe.config.{ ConfigFactory }
 
 object ResumingEventFilter extends App with EventMarshalling {
   val config = ConfigFactory.load() 

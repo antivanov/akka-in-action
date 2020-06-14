@@ -1,8 +1,5 @@
 package aia.stream
 
-
-import java.nio.file.{ Path, Paths }
-import java.nio.file.StandardOpenOption
 import java.nio.file.StandardOpenOption._
 import scala.concurrent.Future
 
@@ -47,7 +44,7 @@ object StreamingCopy extends App {
   runnableGraph.run().foreach { result =>
     println(s"${result.status}, ${result.count} bytes read.")
     system.terminate()
-  }  
+  }
 
 
   // These are just examples, they are not run as part of StreamingCopy

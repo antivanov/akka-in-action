@@ -1,15 +1,11 @@
 package aia.stream
 
-import java.nio.file.{ Path, Paths }
-import java.nio.file.StandardOpenOption
 import java.nio.file.StandardOpenOption._
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-import scala.concurrent.Future
-
 import akka.actor.ActorSystem
-import akka.stream.{ ActorMaterializer, IOResult }
+import akka.stream.{ ActorMaterializer }
 import akka.stream.scaladsl._
 import akka.util.ByteString
 

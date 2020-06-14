@@ -1,23 +1,13 @@
 package aia.stream
 
-import java.nio.file.{ Files, Path, Paths }
-import java.nio.file.StandardOpenOption
-import java.nio.file.StandardOpenOption._
+import java.nio.file.{Files, Path}
 
-import java.time.ZonedDateTime
-
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-import scala.util.{ Success, Failure }
-
-import akka.Done
-import akka.actor._
+import scala.util.{Failure, Success}
+import akka.{Done, NotUsed}
 import akka.util.ByteString
-
-import akka.stream.{ ActorAttributes, ActorMaterializer, IOResult }
-import akka.stream.scaladsl.{ FileIO, BidiFlow, Flow, Framing, Keep, Sink, Source }
-
+import akka.stream.{ActorMaterializer, IOResult}
+import akka.stream.scaladsl.{BidiFlow, FileIO, Flow, Framing, Keep}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
@@ -36,18 +26,16 @@ class LogsApi(
 // route logic follows..
 
   
-  val inFlow = Framing.delimiter(ByteString("\n"), maxLine)
+  val inFlow: Flow[ByteString, Event, NotUsed] = Framing.delimiter(ByteString("\n"), maxLine)
     .map(_.decodeString("UTF8"))
     .map(LogStreamProcessor.parseLineEx)
     .collect { case Some(e) => e }
 
-  val outFlow = Flow[Event].map { event => 
+  val outFlow: Flow[Event, ByteString, NotUsed] = Flow[Event].map { event =>
     ByteString(event.toJson.compactPrint)
   }
   val bidiFlow = BidiFlow.fromFlows(inFlow, outFlow)
 
-
-  import java.nio.file.StandardOpenOption
   import java.nio.file.StandardOpenOption._
 
   val logToJsonFlow = bidiFlow.join(Flow[Event])

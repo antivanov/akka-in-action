@@ -58,7 +58,6 @@ object BidiEventFilter extends App with EventMarshalling {
     }
   val bidiFlow = BidiFlow.fromFlows(inFlow, outFlow)
 
-    
   val source: Source[ByteString, Future[IOResult]] = 
     FileIO.fromPath(inputFile)
 
@@ -70,7 +69,6 @@ object BidiEventFilter extends App with EventMarshalling {
     Flow[Event].filter(_.state == filterState)
 
   val flow = bidiFlow.join(filter)
-
 
   val runnableGraph: RunnableGraph[Future[IOResult]] = 
     source.via(flow).toMat(sink)(Keep.right)

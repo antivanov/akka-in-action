@@ -3,7 +3,6 @@ package aia.stream
 import java.time.ZonedDateTime
 import java.time.format.{ DateTimeFormatter, DateTimeParseException }
 
-import scala.util.Try
 import spray.json._
 
 trait EventMarshalling extends DefaultJsonProtocol {
@@ -14,7 +13,7 @@ trait EventMarshalling extends DefaultJsonProtocol {
         try {
           ZonedDateTime.parse(str)
         } catch {
-          case e: DateTimeParseException => 
+          case _: DateTimeParseException =>
             val msg = s"Could not deserialize $str to ZonedDateTime"
             deserializationError(msg)
         }
