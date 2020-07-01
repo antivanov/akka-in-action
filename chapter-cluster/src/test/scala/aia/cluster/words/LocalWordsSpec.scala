@@ -41,8 +41,8 @@ class LocalWordsSpec extends TestKit(ActorSystem("test"))
 
     "count many occurences of words in a text" in {
       val words = List("this is a test ", "this is a test", "this is", "this")
-      receptionist ! JobRequest("test3", (1 to 100).map(i=> words ++ words).flatten.toList)
-      expectMsg(JobSuccess("test3", Map("this" -> 800, "is"-> 600, "a" -> 400, "test" -> 400)))
+      receptionist ! JobRequest("test3", (1 to 100).map(_ => words).flatten.toList)
+      expectMsg(JobSuccess("test3", Map("this" -> 400, "is"-> 300, "a" -> 200, "test" -> 200)))
       expectNoMsg
     }
 

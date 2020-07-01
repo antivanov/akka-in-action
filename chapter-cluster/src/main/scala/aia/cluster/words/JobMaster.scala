@@ -17,7 +17,6 @@ object JobMaster {
   case object NextTask
   case class TaskResult(map: Map[String, Int])
 
-  case object Start
   case object MergeResults
 }
 

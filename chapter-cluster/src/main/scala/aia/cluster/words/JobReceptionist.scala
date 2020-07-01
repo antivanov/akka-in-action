@@ -38,7 +38,7 @@ class JobReceptionist extends Actor
 
 
   def receive = {
-    case jr @ JobRequest(name, text) =>
+    case _ @ JobRequest(name, text) =>
       log.info(s"Received job $name")
 
       val masterName = "master-"+URLEncoder.encode(name, "UTF8")
@@ -68,13 +68,13 @@ class JobReceptionist extends Actor
         val nrOfRetries = retries.getOrElse(name, 0)
 
         if(maxRetries > nrOfRetries) {
-          if(nrOfRetries == maxRetries -1) {
+          if(nrOfRetries == maxRetries - 1) {
             // Simulating that the Job worker will work just before max retries
             val text = failedJob.text.filterNot(_.contains("FAIL"))
             self.tell(JobRequest(name, text), failedJob.respondTo)
           } else self.tell(JobRequest(name, failedJob.text), failedJob.respondTo)
-
-          retries = retries + retries.get(name).map(r=> name -> (r + 1)).getOrElse(name -> 1)
+          val currentRetries = retries.get(name).getOrElse(0)
+          retries = retries + (name -> (currentRetries + 1))
         }
       }
   }
